@@ -1,0 +1,75 @@
+price <- read.csv(file = 'eur.csv')
+head(price)
+low = diff(price[["Low"]])
+high = diff(price[["High"]])
+open = diff(price[["Open"]])
+range = price[["High"]] - price[["Low"]]
+prange = c(range[2:length(range)],0)
+price1=data.frame(open=c(0,open), high=c(0,high), low=c(0,low), popen=c(open,0), phigh=c(high,0), plow=c(low,0), range = range, prange=prange)
+
+write.csv(
+  price1[2:(nrow(price1)-1),],
+  file = 'ml.csv',)
+  
+
+
+
+
+sinWave = function(f,s) sin((1:length(priceR)-1)/length(priceR)*2*pi*2^(f-1)-s*2*pi)
+rescaleSin = function(sn, v) (min(priceR) + v[2]*priceRange + sn * priceRange * v[1])
+
+experimentLength = 200
+
+
+calcSinusApproximation = function(shift) {
+
+fits = list()
+prices = list()
+experimentXRange = 1:experimentLength+shift
+priceR = price[["Open"]][experimentXRange];
+
+for(iteration in 1:16){
+ 
+  
+  
+  
+  #/// cor
+  #sinWavePar = optim(c(1,0), function(v) cor(sinWave(v[1],v[2]), priceR), method = "L-BFGS-B", lower = c(-3,0), upper = c(5,1), control = list(fnscale = -1) )
+  sinWavePar = optim(c(1,0), function(v) cor(sinWave(v[1],v[2]), priceR), control = list(fnscale = -1) )
+  
+  #// sin
+  selectedSin = sinWave(sinWavePar$par[1],sinWavePar$par[2])
+  
+  #// scale
+  priceRange = max(priceR) - min(priceR)
+  scaledSin = selectedSin * priceRange + min(priceR)
+  
+  #// minimize var
+  
+  #varPar = optim(c(1,0), function(v) { r = rescaleSin(selectedSin, v); m = median(abs(r - priceR)); print(c(v,m)); plot(r); m })
+  varPar = optim(c(8,0), function(v) mean(abs(rescaleSin(selectedSin, v) - priceR)^2))
+  
+  rescaledSin = rescaleSin(selectedSin, varPar$par)
+  priceRReminder = rescaledSin - priceR
+  
+  fits[[length(fits)+1]] = rescaledSin
+  prices[[length(prices)+1]] = priceRReminder
+  priceR = priceRReminder
+
+}
+
+plot(price[["Open"]][experimentXRange])
+
+for(it in 1:16) {
+#lines(apply(matrix(unlist(fits[1:it]), experimentLength), 1, function(x) sum(x)))
+}
+
+return(apply(matrix(unlist(fits[1:16]), experimentLength), 1, function(x) sum(x)))
+}
+
+calcAndPlot = function(shift) {
+  cc = calcSinusApproximation(shift)
+  plot(price[["Open"]][1:experimentLength+shift])
+  lines(cc);
+  
+}
