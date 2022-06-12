@@ -2,7 +2,7 @@
 
 #reslist=lapply(0:2430, \(x) calcSinusApproximation(x,7))
 
-
+require(TTR)
 
 approximations = sapply(reslist, \(x) x$combined[length(x$combined)])
 
