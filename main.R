@@ -1,27 +1,37 @@
-price <- read.csv(file = 'eur.csv')
+#price <- read.csv(file = 'eur.csv')
+
+price <- read.csv(file = 'EURUSD_Candlestick_1_M_BID_30.05.2022-04.06.2022.csv')
+
 head(price)
 
 experimentLength = 100
+require(compiler)
+enableJIT(3)
+compilePKGS(T)
+sinWave = (function(f, s)
+  sin((1:experimentLength - 1) / experimentLength * 2 * pi * 2 ^ (f - 1) - s *
+        2 * pi))
 
+rescaleSin = (function(sn, v, priceR, priceRange)
+  (min(priceR) + v[2] * priceRange + sn * priceRange * v[1]))
 
-calcSinusApproximation = function(shift, noWaves = 6) {
+calcSinusApproximation = function(shift, noWaves = 6, priceR = NULL) {
+ 
   fits = list()
   prices = list()
   experimentXRange = 1:experimentLength + shift
+  #if(is.null(priceR))
   priceR = price[["Open"]][experimentXRange];
   
   sinFreqFact = (log(experimentLength/3,2)*100) 
 
-  sinWave = function(f, s)
-    sin((1:experimentLength - 1) / experimentLength * 2 * pi * 2 ^ (f - 1) - s *
-          2 * pi)
-  rescaleSin = function(sn, v)
-    (min(priceR) + v[2] * priceRange + sn * priceRange * v[1])
+
+
   
   if(!exists("optimizationSpace"))
-    optimizationSpace <<- expand.grid(0:sinFreqFact/100, 0:99/100);
+    optimizationSpace <<- expand.grid(seq(0,sinFreqFact,2)/100, seq(0,99,2)/100);
   
-  if(!exists("sins"))
+  if(!exists("sins") || nrow(sins) != experimentLength)
   sins <<- apply(optimizationSpace, 1, function(x) sinWave(x[1],x[2]))
   
   
@@ -45,10 +55,10 @@ calcSinusApproximation = function(shift, noWaves = 6) {
     selectedSin = sins[,which(values == max(values))]
                        
 #    #
-#    sin2nd = (sins * selectedSin)
-#    values = cor(priceR, sin2nd)[1,]
-#    #sinWavePar = optimizationSpace[which(values == max(values)),]
-#    selectedSin = sin2nd[,which(values == max(values))]
+    #sin2nd = (sins * selectedSin)
+    #values = cor(priceR, sin2nd)[1,]
+    #sinWavePar = optimizationSpace[which(values == max(values)),]
+    #selectedSin = sin2nd[,which(values == max(values))]
 #    #
                        
                    
@@ -59,15 +69,15 @@ calcSinusApproximation = function(shift, noWaves = 6) {
     #// minimize var
     
     #varPar = optim(c(1,0), function(v) { r = rescaleSin(selectedSin, v); m = median(abs(r - priceR)); print(c(v,m)); plot(r); m })
-    varPar = optim(c(1, 0), function(v)
-      mean(abs(rescaleSin(selectedSin, v) - priceR) ^ 2))
+    varPar = optim(c(8, 0), function(v)
+      mean((rescaleSin(selectedSin, v, priceR, priceRange) - priceR) ^ 2))
     
-    rescaledSin = rescaleSin(selectedSin, varPar$par)
+    #rescaledSin = rescaleSin(selectedSin, varPar$par)
+    rescaledSin = selectedSin
+    reshape = lowess(rescaledSin, priceR)
+    reshapedSin = splinefun(reshape$x,reshape$y)(rescaledSin)
     
-    #reshape = lowess(rescaledSin, priceR)
-    #reshapedSin = splinefun(reshape$x,reshape$y)(rescaledSin)
-    
-    reshapedSin = rescaledSin
+    #reshapedSin = rescaledSin
     
     priceRReminder = priceR - reshapedSin
     
@@ -95,6 +105,6 @@ calcAndPlot = function(shift) {
   lines(cc)
 }
 
-
+calcSinusApproximation = cmpfun(calcSinusApproximation, options = list(optimize = 3))
 
 
