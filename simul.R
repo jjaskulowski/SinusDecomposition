@@ -1,6 +1,6 @@
 # uncoment to reinit
 
-#reslist=lapply(0:2430, \(x) calcSinusApproximation(x,7))
+#reslist=lapply(0:2430, \(x) calcSinusApproximation(x,4))
 
 require(TTR)
 

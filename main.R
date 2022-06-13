@@ -25,8 +25,6 @@ calcSinusApproximation = function(shift, noWaves = 6, priceR = NULL) {
   
   sinFreqFact = (log(experimentLength/3,2)*100) 
 
-
-
   
   if(!exists("optimizationSpace"))
     optimizationSpace <<- expand.grid(seq(0,sinFreqFact,2)/100, seq(0,99,2)/100);
@@ -52,7 +50,8 @@ calcSinusApproximation = function(shift, noWaves = 6, priceR = NULL) {
     #// sin
     #selectedSin = sinWave(sinWavePar$par[1], sinWavePar$par[2])
     #selectedSin = sinWave(sinWavePar[1], sinWavePar[2])
-    selectedSin = sins[,which(values == max(values))]
+    wh = which(values == max(values))
+    selectedSin = sins[,wh]
                        
 #    #
     #sin2nd = (sins * selectedSin)
@@ -69,15 +68,20 @@ calcSinusApproximation = function(shift, noWaves = 6, priceR = NULL) {
     #// minimize var
     
     #varPar = optim(c(1,0), function(v) { r = rescaleSin(selectedSin, v); m = median(abs(r - priceR)); print(c(v,m)); plot(r); m })
-    varPar = optim(c(8, 0), function(v)
-      mean((rescaleSin(selectedSin, v, priceR, priceRange) - priceR) ^ 2))
+    #varPar = optim(c(8, 0), function(v)
+    #  mean((rescaleSin(selectedSin, v, priceR, priceRange) - priceR) ^ 2))
     
     #rescaledSin = rescaleSin(selectedSin, varPar$par)
     rescaledSin = selectedSin
-    reshape = lowess(rescaledSin, priceR)
-    reshapedSin = splinefun(reshape$x,reshape$y)(rescaledSin)
+    #reshape = lowess(rescaledSin, priceR)
+    #reshapedSin = splinefun(reshape$x,reshape$y)(rescaledSin)
     
     #reshapedSin = rescaledSin
+    
+    reshape = lowess(rescaledSin, priceR, f=2^(optimizationSpace[wh,1]-1))
+    reshapedSin = approxfun(reshape$x,reshape$y)(rescaledSin)
+    #plot(z2(rescaledSin))
+    
     
     priceRReminder = priceR - reshapedSin
     
